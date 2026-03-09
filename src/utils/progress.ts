@@ -132,7 +132,7 @@ export function buildSimpleQueue(phraseIds: number[]): number[] {
   return shuffleArray([...new Set(phraseIds)]);
 }
 
-/** Determine card type: 'en_to_jp' or 'jp_to_en' based on 70/30 ratio */
+/** Always English → Japanese */
 export function pickCardType(): 'en_to_jp' | 'jp_to_en' {
-  return Math.random() < 0.7 ? 'en_to_jp' : 'jp_to_en';
+  return 'en_to_jp';
 }
