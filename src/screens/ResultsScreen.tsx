@@ -125,7 +125,9 @@ export default function ResultsScreen({ navigation, route }: Props) {
             ) : (
               <>
                 <Text style={styles.unlockHint}>
-                  Reach 80% over 3 days to unlock the next batch!
+                  {dailySessions.length < 3
+                    ? `Keep going! ${3 - dailySessions.length} more day${3 - dailySessions.length === 1 ? '' : 's'} needed before you can unlock the next batch.`
+                    : `Keep your average above 80% to unlock the next batch!`}
                 </Text>
                 <TouchableOpacity onPress={handleUnlockAnyway} style={styles.unlockAnywayBtn}>
                   <Text style={styles.unlockAnywayText}>Unlock anyway (not recommended)</Text>

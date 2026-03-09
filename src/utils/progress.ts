@@ -9,13 +9,14 @@ export function getRollingAverage(sessions: DailySession[]): number {
   return avg;
 }
 
-/** Check if user is eligible to unlock next batch (80% threshold over last 3 days) */
+/** Check if user is eligible to unlock next batch (80% threshold over at least 3 days) */
 export function canUnlockNextBatch(
   sessions: DailySession[],
   currentBatch: number,
   totalBatches: number
 ): boolean {
   if (currentBatch >= totalBatches) return false;
+  if (sessions.length < 3) return false;
   const avg = getRollingAverage(sessions);
   return avg >= 0.8;
 }
