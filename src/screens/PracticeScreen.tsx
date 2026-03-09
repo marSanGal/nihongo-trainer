@@ -64,11 +64,13 @@ export default function PracticeScreen({ navigation, route }: Props) {
     [state.progress.unlockedPhrases]
   );
 
+  const CORRECT_TO_PASS = 2;
   const totalToPass = phraseIds.length;
 
   const [queue, setQueue] = useState<QueueItem[]>(() => buildQueue(phraseIds));
   const [queueIndex, setQueueIndex] = useState(0);
-  const [passedIds, setPassedIds] = useState<Set<number>>(new Set());
+  // tracks how many times each phrase has been answered correctly
+  const [correctCounts, setCorrectCounts] = useState<Record<number, number>>({});
 
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
@@ -107,26 +109,26 @@ export default function PracticeScreen({ navigation, route }: Props) {
 
     setTimeout(() => {
       if (isCorrect) {
-        const newPassed = new Set(passedIds);
-        newPassed.add(current.phraseId);
-        setPassedIds(newPassed);
+        const newCounts = { ...correctCounts, [current.phraseId]: (correctCounts[current.phraseId] ?? 0) + 1 };
+        setCorrectCounts(newCounts);
 
-        const remaining = phraseIds.filter((id) => !newPassed.has(id));
+        const isPassed = newCounts[current.phraseId] >= CORRECT_TO_PASS;
+        const remaining = phraseIds.filter((id) => (newCounts[id] ?? 0) < CORRECT_TO_PASS);
 
         if (remaining.length === 0) {
           navigation.navigate('Transition');
           return;
         }
 
-        advanceQueue(newPassed, remaining);
+        advanceQueue(newCounts, remaining);
       } else {
-        const remaining = phraseIds.filter((id) => !passedIds.has(id));
-        advanceQueue(passedIds, remaining);
+        const remaining = phraseIds.filter((id) => (correctCounts[id] ?? 0) < CORRECT_TO_PASS);
+        advanceQueue(correctCounts, remaining);
       }
     }, isCorrect ? 900 : 1600);
   }
 
-  function advanceQueue(currentPassed: Set<number>, remaining: number[]) {
+  function advanceQueue(counts: Record<number, number>, remaining: number[]) {
     const nextIndex = queueIndex + 1;
     if (nextIndex < queue.length) {
       setQueueIndex(nextIndex);
@@ -142,7 +144,7 @@ export default function PracticeScreen({ navigation, route }: Props) {
     current.cardType === 'en_to_jp' ? phrase.japanese : phrase.english;
   const correctRomaji =
     current.cardType === 'en_to_jp' ? phrase.romaji : undefined;
-  const passedCount = passedIds.size;
+  const passedCount = phraseIds.filter((id) => (correctCounts[id] ?? 0) >= CORRECT_TO_PASS).length;
 
   return (
     <SafeAreaView style={styles.safe}>
