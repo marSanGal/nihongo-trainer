@@ -1,0 +1,15 @@
+export const Colors = {
+  primaryPink: '#D63384',
+  lightPinkBg: '#FFF0F6',
+  purple: '#7B5EA7',
+  green: '#1A7A4A',
+  amber: '#C06000',
+  textDark: '#1A1A1A',
+  textMuted: '#666666',
+  white: '#FFFFFF',
+  cardBg: '#FFFFFF',
+  border: '#F0D0E0',
+  stillLearning: '#C06000',
+  almost: '#7B5EA7',
+  gotIt: '#1A7A4A',
+};
