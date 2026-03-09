@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -34,10 +34,25 @@ export default function ResultsScreen({ navigation, route }: Props) {
     [dailySessions, progress.currentBatch]
   );
 
+  const [expandedCategory, setExpandedCategory] = useState<Rating | null>(null);
+
   const gotItCount = Object.values(ratings).filter((r) => r === 'got_it').length;
   const almostCount = Object.values(ratings).filter((r) => r === 'almost').length;
   const stillCount = Object.values(ratings).filter((r) => r === 'still_learning').length;
   const total = Object.values(ratings).length;
+
+  const phrasesByRating = useMemo(() => {
+    const map: Record<Rating, typeof flaggedPhraseFull> = {
+      got_it: [],
+      almost: [],
+      still_learning: [],
+    };
+    (Object.entries(ratings) as [string, Rating][]).forEach(([idStr, rating]) => {
+      const p = getPhraseById(Number(idStr));
+      if (p) map[rating].push(p);
+    });
+    return map;
+  }, [ratings]);
 
   const flaggedPhraseFull = flaggedPhrases.map((id) => getPhraseById(id)).filter(Boolean);
 
@@ -82,22 +97,37 @@ export default function ResultsScreen({ navigation, route }: Props) {
 
         {/* Breakdown */}
         <View style={styles.breakdownRow}>
-          <View style={[styles.breakdownItem, { backgroundColor: '#E8F5EE' }]}>
-            <Text style={styles.breakdownEmoji}>😄</Text>
-            <Text style={[styles.breakdownNum, { color: Colors.green }]}>{gotItCount}</Text>
-            <Text style={styles.breakdownLabel}>Got it</Text>
-          </View>
-          <View style={[styles.breakdownItem, { backgroundColor: '#F0EBF8' }]}>
-            <Text style={styles.breakdownEmoji}>🙂</Text>
-            <Text style={[styles.breakdownNum, { color: Colors.purple }]}>{almostCount}</Text>
-            <Text style={styles.breakdownLabel}>Almost</Text>
-          </View>
-          <View style={[styles.breakdownItem, { backgroundColor: '#FEF3E2' }]}>
-            <Text style={styles.breakdownEmoji}>😕</Text>
-            <Text style={[styles.breakdownNum, { color: Colors.amber }]}>{stillCount}</Text>
-            <Text style={styles.breakdownLabel}>Still learning</Text>
-          </View>
+          {([
+            { rating: 'got_it' as Rating, emoji: '😄', count: gotItCount, color: Colors.green, bg: '#E8F5EE', label: 'Got it' },
+            { rating: 'almost' as Rating, emoji: '🙂', count: almostCount, color: Colors.purple, bg: '#F0EBF8', label: 'Almost' },
+            { rating: 'still_learning' as Rating, emoji: '😕', count: stillCount, color: Colors.amber, bg: '#FEF3E2', label: 'Still learning' },
+          ]).map(({ rating, emoji, count, color, bg, label }) => (
+            <TouchableOpacity
+              key={rating}
+              style={[styles.breakdownItem, { backgroundColor: bg }, expandedCategory === rating && styles.breakdownItemActive]}
+              onPress={() => setExpandedCategory(expandedCategory === rating ? null : rating)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.breakdownEmoji}>{emoji}</Text>
+              <Text style={[styles.breakdownNum, { color }]}>{count}</Text>
+              <Text style={styles.breakdownLabel}>{label}</Text>
+              {count > 0 && <Text style={[styles.breakdownTap, { color }]}>tap to see</Text>}
+            </TouchableOpacity>
+          ))}
         </View>
+
+        {/* Expanded phrase list */}
+        {expandedCategory && phrasesByRating[expandedCategory].length > 0 && (
+          <View style={styles.expandedList}>
+            {phrasesByRating[expandedCategory].map((p) => p && (
+              <View key={p.id} style={styles.expandedPhrase}>
+                <Text style={styles.expandedJapanese}>{p.japanese}</Text>
+                <Text style={styles.expandedRomaji}>{p.romaji}</Text>
+                <Text style={styles.expandedEnglish}>{p.english}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Streak */}
         <View style={styles.streakCard}>
@@ -188,11 +218,29 @@ const styles = StyleSheet.create({
   scoreDivider: { width: 40, height: 2, backgroundColor: 'rgba(255,255,255,0.4)', marginBottom: 12 },
   rollingAvgText: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
 
-  breakdownRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  breakdownItem: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'center' },
+  breakdownRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  breakdownItem: { flex: 1, borderRadius: 16, padding: 14, alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  breakdownItemActive: { borderColor: Colors.textMuted },
   breakdownEmoji: { fontSize: 24, marginBottom: 4 },
   breakdownNum: { fontSize: 28, fontWeight: '800' },
   breakdownLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  breakdownTap: { fontSize: 10, marginTop: 4, fontStyle: 'italic' },
+
+  expandedList: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+  },
+  expandedPhrase: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingBottom: 12,
+  },
+  expandedJapanese: { fontSize: 20, fontWeight: '700', color: Colors.primaryPink, marginBottom: 2 },
+  expandedRomaji: { fontSize: 13, color: Colors.purple, fontStyle: 'italic', marginBottom: 2 },
+  expandedEnglish: { fontSize: 13, color: Colors.textMuted },
 
   streakCard: {
     backgroundColor: Colors.white,

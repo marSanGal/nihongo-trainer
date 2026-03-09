@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +23,15 @@ export default function LessonScreen({ navigation }: Props) {
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
 
+  const phraseIds = state.progress.unlockedPhrases;
+
+  // Only run once on mount — avoids re-render loop when LessonScreen stays in stack
+  useEffect(() => {
+    if (unseenPhrases.length === 0) {
+      navigation.navigate('Practice', { phraseIds });
+    }
+  }, []);
+
   const phrase = unseenPhrases[index];
 
   function handleReveal() {
@@ -36,15 +45,11 @@ export default function LessonScreen({ navigation }: Props) {
     } else {
       // All phrases seen — mark them as seen, then Practice with ALL unlocked phrases
       dispatch({ type: 'MARK_BATCH_SEEN', payload: state.progress.unseenBatchPhrases });
-      navigation.navigate('Practice', { phraseIds: state.progress.unlockedPhrases });
+      navigation.navigate('Practice', { phraseIds });
     }
   }
 
-  if (!phrase) {
-    // No unseen phrases — skip straight to Practice
-    navigation.navigate('Practice', { phraseIds: state.progress.unlockedPhrases });
-    return null;
-  }
+  if (!phrase) return null;
 
   return (
     <SafeAreaView style={styles.safe}>

@@ -54,7 +54,7 @@ function pickRandom(ids: number[], exclude?: number): number {
 }
 
 export default function PracticeScreen({ navigation, route }: Props) {
-  const { phraseIds } = route.params;
+  const { phraseIds, returnHome } = route.params;
   const state = useAppState();
 
   const allUnlocked = useMemo(
@@ -110,7 +110,11 @@ export default function PracticeScreen({ navigation, route }: Props) {
 
         const remaining = phraseIds.filter((id) => (newCounts[id] ?? 0) < CORRECT_TO_PASS);
         if (remaining.length === 0) {
-          navigation.navigate('Transition');
+          if (returnHome) {
+            navigation.getParent()?.navigate('Home');
+          } else {
+            navigation.navigate('Transition');
+          }
           return;
         }
         setCurrentPhraseId(pickRandom(remaining, currentPhraseId));

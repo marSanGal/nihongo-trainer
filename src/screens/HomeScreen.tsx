@@ -31,7 +31,7 @@ const PACE_CONFIG = {
 
 export default function HomeScreen({ navigation }: Props) {
   const state = useAppState();
-  const { settings, progress, dailySessions } = state;
+  const { settings, progress, dailySessions, phraseStats } = state;
 
   const daysLeft = useMemo(
     () => getDaysUntilDeparture(settings.departureDate),
@@ -57,8 +57,32 @@ export default function HomeScreen({ navigation }: Props) {
 
   const hasUnseenPhrases = progress.unseenBatchPhrases.length > 0;
 
+  const phrasesByStatus = useMemo(() => {
+    const gotIt: number[] = [];
+    const almost: number[] = [];
+    const stillLearning: number[] = [];
+    const newPhrases: number[] = [];
+    for (const id of progress.unlockedPhrases) {
+      const stats = phraseStats[String(id)];
+      if (!stats || stats.lastRating === null) newPhrases.push(id);
+      else if (stats.lastRating === 'got_it') gotIt.push(id);
+      else if (stats.lastRating === 'almost') almost.push(id);
+      else stillLearning.push(id);
+    }
+    return { gotIt, almost, stillLearning, newPhrases };
+  }, [progress.unlockedPhrases, phraseStats]);
+
   function handleStartSession() {
     navigation.navigate('Session');
+  }
+
+  function handleQuickPractice() {
+    navigation.navigate('Session', { quickPractice: true });
+  }
+
+  function handlePracticeCategory(ids: number[]) {
+    if (ids.length === 0) return;
+    navigation.navigate('Session', { quickPractice: true, practiceIds: ids });
   }
 
   function handleViewProgress() {
@@ -118,6 +142,34 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         </View>
 
+        {/* Phrase status breakdown */}
+        {progress.unlockedPhrases.length > 0 && (
+          <View style={styles.statusSection}>
+            <Text style={styles.statusTitle}>My phrases</Text>
+            <View style={styles.statusRow}>
+              {([
+                { label: 'Got it', emoji: '😄', ids: phrasesByStatus.gotIt, color: Colors.green, bg: '#E8F5EE' },
+                { label: 'Almost', emoji: '🙂', ids: phrasesByStatus.almost, color: Colors.purple, bg: '#F0EBF8' },
+                { label: 'Learning', emoji: '😕', ids: phrasesByStatus.stillLearning, color: Colors.amber, bg: '#FEF3E2' },
+                { label: 'New', emoji: '📖', ids: phrasesByStatus.newPhrases, color: Colors.textMuted, bg: Colors.white },
+              ]).map(({ label, emoji, ids, color, bg }) => (
+                <TouchableOpacity
+                  key={label}
+                  style={[styles.statusCard, { backgroundColor: bg }, ids.length === 0 && styles.statusCardEmpty]}
+                  onPress={() => handlePracticeCategory(ids)}
+                  activeOpacity={ids.length > 0 ? 0.75 : 1}
+                  disabled={ids.length === 0}
+                >
+                  <Text style={styles.statusEmoji}>{emoji}</Text>
+                  <Text style={[styles.statusCount, { color }]}>{ids.length}</Text>
+                  <Text style={styles.statusLabel}>{label}</Text>
+                  {ids.length > 0 && <Text style={[styles.statusPractice, { color }]}>practice</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Unlock nudge */}
         {canUnlock && progress.currentBatch < BATCH_COUNT && (
           <View style={styles.unlockBanner}>
@@ -144,6 +196,17 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <Text style={styles.startButtonText}>Start Today's Session 🎌</Text>
         </TouchableOpacity>
+
+        {/* Quick practice */}
+        {progress.unlockedPhrases.length > 0 && (
+          <TouchableOpacity
+            style={styles.practiceButton}
+            onPress={handleQuickPractice}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.practiceButtonText}>Practice phrases 🎯</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Progress link */}
         <TouchableOpacity style={styles.progressLink} onPress={handleViewProgress}>
@@ -223,6 +286,28 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 22, fontWeight: '800', color: Colors.textDark },
   statLabel: { fontSize: 11, color: Colors.textMuted, textAlign: 'center', marginTop: 2 },
 
+  statusSection: { marginBottom: 16 },
+  statusTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 },
+  statusRow: { flexDirection: 'row', gap: 8 },
+  statusCard: {
+    flex: 1,
+    borderRadius: 14,
+    padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statusCardEmpty: { opacity: 0.5 },
+  statusEmoji: { fontSize: 18, marginBottom: 2 },
+  statusCount: { fontSize: 20, fontWeight: '800' },
+  statusLabel: { fontSize: 10, color: Colors.textMuted, textAlign: 'center', marginTop: 1 },
+  statusPractice: { fontSize: 9, fontStyle: 'italic', marginTop: 3 },
+
   unlockBanner: {
     backgroundColor: Colors.green,
     borderRadius: 14,
@@ -265,6 +350,21 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 20,
     fontWeight: '800',
+  },
+
+  practiceButton: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: Colors.purple,
+  },
+  practiceButtonText: {
+    color: Colors.purple,
+    fontSize: 18,
+    fontWeight: '700',
   },
 
   progressLink: { alignItems: 'center', paddingVertical: 8 },

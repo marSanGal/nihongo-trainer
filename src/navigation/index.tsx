@@ -8,15 +8,15 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Home: undefined;
   Progress: undefined;
-  Session: undefined;
+  Session: { quickPractice?: boolean; practiceIds?: number[] } | undefined;
 };
 
 // Session stack params
 export type SessionStackParamList = {
-  SessionEntry: undefined;
+  SessionEntry: { quickPractice?: boolean; practiceIds?: number[] } | undefined;
   WarmUp: { phraseIds: number[] };
   Lesson: undefined;
-  Practice: { phraseIds: number[] };
+  Practice: { phraseIds: number[]; returnHome?: boolean };
   Transition: undefined;
   Quiz: undefined;
   Results: {
@@ -38,14 +38,23 @@ import TransitionScreen from '../screens/TransitionScreen';
 import QuizScreen from '../screens/QuizScreen';
 import ResultsScreen from '../screens/ResultsScreen';
 import { useAppState } from '../context/AppContext';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const SessionStack = createNativeStackNavigator<SessionStackParamList>();
 
-function SessionNavigator() {
+type SessionNavigatorProps = NativeStackScreenProps<RootStackParamList, 'Session'>;
+
+function SessionNavigator({ route }: SessionNavigatorProps) {
+  const quickPractice = route.params?.quickPractice;
+  const practiceIds = route.params?.practiceIds;
   return (
     <SessionStack.Navigator screenOptions={{ headerShown: false }}>
-      <SessionStack.Screen name="SessionEntry" component={SessionEntryScreen} />
+      <SessionStack.Screen
+        name="SessionEntry"
+        component={SessionEntryScreen}
+        initialParams={{ quickPractice, practiceIds }}
+      />
       <SessionStack.Screen name="WarmUp" component={WarmUpScreen} />
       <SessionStack.Screen name="Lesson" component={LessonScreen} />
       <SessionStack.Screen name="Practice" component={PracticeScreen} />
