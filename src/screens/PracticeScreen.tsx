@@ -48,11 +48,9 @@ function buildOptions(correct: Phrase, cardType: CardType, allPhrases: Phrase[])
   }
 }
 
-function buildQueue(phraseIds: number[]): QueueItem[] {
-  return shuffleArray(phraseIds).map((id) => ({
-    phraseId: id,
-    cardType: pickCardType() as CardType,
-  }));
+function pickRandom(ids: number[], exclude?: number): number {
+  const pool = ids.length > 1 ? ids.filter((id) => id !== exclude) : ids;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export default function PracticeScreen({ navigation, route }: Props) {
@@ -67,10 +65,10 @@ export default function PracticeScreen({ navigation, route }: Props) {
   const CORRECT_TO_PASS = 2;
   const totalToPass = phraseIds.length;
 
-  const [queue, setQueue] = useState<QueueItem[]>(() => buildQueue(phraseIds));
-  const [queueIndex, setQueueIndex] = useState(0);
-  // tracks how many times each phrase has been answered correctly
   const [correctCounts, setCorrectCounts] = useState<Record<number, number>>({});
+  const [currentPhraseId, setCurrentPhraseId] = useState<number>(
+    () => pickRandom(phraseIds)
+  );
 
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
@@ -78,15 +76,14 @@ export default function PracticeScreen({ navigation, route }: Props) {
 
   const feedbackAnim = useRef(new Animated.Value(0)).current;
 
-  const current = queue[queueIndex];
-  const phrase = current ? getPhraseById(current.phraseId) : null;
+  const phrase = getPhraseById(currentPhraseId);
 
   useEffect(() => {
-    if (!phrase || !current) return;
-    setOptions(buildOptions(phrase, current.cardType, allUnlocked));
+    if (!phrase) return;
+    setOptions(buildOptions(phrase, 'en_to_jp', allUnlocked));
     setSelectedAnswer(null);
     setAnswerState('idle');
-  }, [queueIndex, queue]);
+  }, [currentPhraseId]);
 
   function flashFeedback() {
     feedbackAnim.setValue(0);
@@ -97,11 +94,9 @@ export default function PracticeScreen({ navigation, route }: Props) {
   }
 
   function handleAnswer(answer: string) {
-    if (answerState !== 'idle' || !phrase || !current) return;
+    if (answerState !== 'idle' || !phrase) return;
 
-    const correctAnswer =
-      current.cardType === 'en_to_jp' ? phrase.japanese : phrase.english;
-    const isCorrect = answer === correctAnswer;
+    const isCorrect = answer === phrase.japanese;
 
     setSelectedAnswer(answer);
     setAnswerState(isCorrect ? 'correct' : 'wrong');
@@ -109,41 +104,26 @@ export default function PracticeScreen({ navigation, route }: Props) {
 
     setTimeout(() => {
       if (isCorrect) {
-        const newCounts = { ...correctCounts, [current.phraseId]: (correctCounts[current.phraseId] ?? 0) + 1 };
+        const newCounts = { ...correctCounts, [currentPhraseId]: (correctCounts[currentPhraseId] ?? 0) + 1 };
         setCorrectCounts(newCounts);
 
-        const isPassed = newCounts[current.phraseId] >= CORRECT_TO_PASS;
         const remaining = phraseIds.filter((id) => (newCounts[id] ?? 0) < CORRECT_TO_PASS);
-
         if (remaining.length === 0) {
           navigation.navigate('Transition');
           return;
         }
-
-        advanceQueue(newCounts, remaining);
+        setCurrentPhraseId(pickRandom(remaining, currentPhraseId));
       } else {
         const remaining = phraseIds.filter((id) => (correctCounts[id] ?? 0) < CORRECT_TO_PASS);
-        advanceQueue(correctCounts, remaining);
+        setCurrentPhraseId(pickRandom(remaining, currentPhraseId));
       }
     }, isCorrect ? 900 : 1600);
   }
 
-  function advanceQueue(counts: Record<number, number>, remaining: number[]) {
-    const nextIndex = queueIndex + 1;
-    if (nextIndex < queue.length) {
-      setQueueIndex(nextIndex);
-    } else {
-      setQueue(buildQueue(remaining));
-      setQueueIndex(0);
-    }
-  }
+  if (!phrase) return null;
 
-  if (!phrase || !current) return null;
-
-  const correctAnswer =
-    current.cardType === 'en_to_jp' ? phrase.japanese : phrase.english;
-  const correctRomaji =
-    current.cardType === 'en_to_jp' ? phrase.romaji : undefined;
+  const correctAnswer = phrase.japanese;
+  const correctRomaji = phrase.romaji;
   const passedCount = phraseIds.filter((id) => (correctCounts[id] ?? 0) >= CORRECT_TO_PASS).length;
 
   return (
@@ -161,15 +141,8 @@ export default function PracticeScreen({ navigation, route }: Props) {
 
         {/* Question card */}
         <View style={styles.card}>
-          <Text style={styles.directionHint}>
-            {current.cardType === 'en_to_jp' ? 'English → Japanese' : 'Japanese → English'}
-          </Text>
-          <Text style={styles.question}>
-            {current.cardType === 'en_to_jp' ? phrase.english : phrase.japanese}
-          </Text>
-          {current.cardType === 'jp_to_en' && (
-            <Text style={styles.questionSub}>{phrase.romaji}</Text>
-          )}
+          <Text style={styles.directionHint}>English → Japanese</Text>
+          <Text style={styles.question}>{phrase.english}</Text>
         </View>
 
         {/* Options */}
