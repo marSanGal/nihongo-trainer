@@ -69,6 +69,7 @@ export default function PracticeScreen({ navigation, route }: Props) {
   const [currentPhraseId, setCurrentPhraseId] = useState<number>(
     () => pickRandom(phraseIds)
   );
+  const [cardKey, setCardKey] = useState(0);
 
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [answerState, setAnswerState] = useState<AnswerState>('idle');
@@ -83,7 +84,7 @@ export default function PracticeScreen({ navigation, route }: Props) {
     setOptions(buildOptions(phrase, 'en_to_jp', allUnlocked));
     setSelectedAnswer(null);
     setAnswerState('idle');
-  }, [currentPhraseId]);
+  }, [cardKey]);
 
   function flashFeedback() {
     feedbackAnim.setValue(0);
@@ -113,9 +114,11 @@ export default function PracticeScreen({ navigation, route }: Props) {
           return;
         }
         setCurrentPhraseId(pickRandom(remaining, currentPhraseId));
+        setCardKey((k) => k + 1);
       } else {
         const remaining = phraseIds.filter((id) => (correctCounts[id] ?? 0) < CORRECT_TO_PASS);
         setCurrentPhraseId(pickRandom(remaining, currentPhraseId));
+        setCardKey((k) => k + 1);
       }
     }, isCorrect ? 900 : 1600);
   }
